@@ -1,1 +1,144 @@
-print("Nigger " .. game.Players.LocalPlayer.Name .. " go fuck your self")
+-- LocalScript (Place in StarterPlayerScripts)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ChatService = game:GetService("Chat")
+local RunService = game:GetService("RunService")
+
+-- Configuration
+local COMMAND_PREFIX = "/WalkSpeed "
+local UI_NAME = "ScriptFailureNotification"
+
+-- Helper function to safely get the Humanoid
+local function getHumanoid()
+    local Character = LocalPlayer.Character
+    return Character and Character:FindFirstChildOfClass("Humanoid")
+end
+
+-- 1. COMMAND HANDLER
+local function handleChatCommand(message)
+    -- Check if the message starts with the command prefix
+    if message:sub(1, #COMMAND_PREFIX):lower() == COMMAND_PREFIX:lower() then
+        
+        -- Extract the number part of the command
+        local speedString = message:sub(#COMMAND_PREFIX + 1)
+        local newSpeed = tonumber(speedString)
+        
+        -- Check if a valid number was provided
+        if newSpeed and newSpeed >= 0 and newSpeed <= 1000 then -- Set a reasonable max speed
+            local Humanoid = getHumanoid()
+            
+            if Humanoid then
+                -- Apply the speed change
+                Humanoid.WalkSpeed = newSpeed
+                ChatService:DisplaySystemMessage("WalkSpeed set to " .. newSpeed .. ".", "Green")
+            else
+                -- Script failed (Humanoid not found) -> Show the GUI
+                warn("Failed to find Humanoid for speed change. Triggering fallback UI.")
+                pcall(function()
+                    createAndDisplayFailureUI()
+                end)
+            end
+            
+            -- Command handled, suppress default chat output
+            return true 
+        end
+    end
+    
+    -- Command not recognized or invalid, allow default chat
+    return false 
+end
+
+-- Connect the handler to the chat system
+-- Note: This requires the Chat Service to be running, typically works well in LocalScripts.
+if ChatService then
+    ChatService.Chatted:Connect(handleChatCommand)
+else
+    -- Fallback for systems without the modern ChatService
+    LocalPlayer.Chatted:Connect(handleChatCommand)
+end
+
+-- 2. UI CREATION AND DISPLAY
+local function createAndDisplayFailureUI()
+    if LocalPlayer.PlayerGui:FindFirstChild(UI_NAME) then 
+        return -- UI is already displayed
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = UI_NAME
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.Parent = LocalPlayer.PlayerGui
+
+    -- Main Frame (Blue with Black Border)
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 300, 0, 150)
+    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = Color3.fromHSV(0.6, 0.7, 0.8) -- Blue Color
+    MainFrame.BorderSizePixel = 3
+    MainFrame.BorderColor3 = Color3.new(0, 0, 0) -- Black Border
+    MainFrame.Parent = ScreenGui
+
+    -- TextLabel
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Text = "⚠️ Important System Notification ⚠️"
+    TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+    TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Font = Enum.Font.SourceSansBold
+    TitleLabel.TextSize = 18
+    TitleLabel.TextColor3 = Color3.new(1, 1, 1) -- White Text
+    TitleLabel.Parent = MainFrame
+    
+    local MessageLabel = Instance.new("TextLabel")
+    MessageLabel.Text = "The script encountered an error: The Humanoid object could not be found to set the speed."
+    MessageLabel.Size = UDim2.new(0.9, 0, 0, 40)
+    MessageLabel.Position = UDim2.new(0.5, 0, 0.4, 0)
+    MessageLabel.AnchorPoint = Vector2.new(0.5, 0)
+    MessageLabel.BackgroundTransparency = 1
+    MessageLabel.Font = Enum.Font.SourceSans
+    MessageLabel.TextSize = 14
+    MessageLabel.TextWrapped = true
+    MessageLabel.TextColor3 = Color3.new(1, 1, 1) -- White Text
+    MessageLabel.Parent = MainFrame
+
+    -- Leave Button
+    local LeaveButton = Instance.new("TextButton")
+    LeaveButton.Text = "Leave Game"
+    LeaveButton.Size = UDim2.new(0.4, 0, 0.3, 0)
+    LeaveButton.Position = UDim2.new(0.05, 0, 0.65, 0)
+    LeaveButton.BackgroundColor3 = Color3.new(1, 0, 0) -- Red
+    LeaveButton.TextColor3 = Color3.new(1, 1, 1)
+    LeaveButton.Font = Enum.Font.SourceSansBold
+    LeaveButton.Parent = MainFrame
+    
+    LeaveButton.MouseButton1Click:Connect(function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId) -- Simple way to make the player leave/rejoin
+    end)
+
+    -- Stay Button
+    local StayButton = Instance.new("TextButton")
+    StayButton.Text = "Stay Here"
+    StayButton.Size = UDim2.new(0.4, 0, 0.3, 0)
+    StayButton.Position = UDim2.new(0.55, 0, 0.65, 0)
+    StayButton.BackgroundColor3 = Color3.new(0, 0.6, 0) -- Green
+    StayButton.TextColor3 = Color3.new(1, 1, 1)
+    StayButton.Font = Enum.Font.SourceSansBold
+    StayButton.Parent = MainFrame
+    
+    StayButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy() -- Close the notification
+    end)
+
+    -- 3. ANIMATION (Ocean Waves Effect)
+    -- Use a subtle wave motion for the blue frame background
+    local startY = MainFrame.Position.Y.Offset
+    local t = 0 -- Time variable
+
+    RunService.Heartbeat:Connect(function(dt)
+        t = t + dt * 2 -- Control speed of the wave
+        -- Sine wave for subtle vertical oscillation
+        local waveOffset = math.sin(t) * 5 -- 5 pixel amplitude
+        MainFrame.Position = UDim2.new(0.5, -150, 0.5, -75 + waveOffset)
+    end)
+end
